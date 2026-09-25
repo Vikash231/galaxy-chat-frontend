@@ -10,6 +10,7 @@ const STEP_OF = (seq: number) => Math.floor(seq / 100);
 /** The reply while it streams: per LLM step, its thinking, text and tool cards, in order. */
 export function LiveReply({ meta, steps, reconnecting }: { meta?: RunMeta; steps: LiveStep[]; reconnecting: boolean }) {
   const tools = Object.entries(meta?.tools ?? {}).sort(([, a], [, b]) => a.seq - b.seq);
+  const shown = new Set(tools.flatMap(([, t]) => (t.assetUrl ? [t.assetUrl] : [])));
   const stepNumbers = [...new Set([...steps.map((s) => s.step), ...tools.map(([, t]) => STEP_OF(t.seq))])].sort((a, b) => a - b);
   const status = meta?.status ?? "thinking";
   const label = meta?.label ? `${meta.label}…` : status === "working" ? "Working…" : status === "stopping" ? "Stopping…" : "Thinking…";
@@ -21,7 +22,7 @@ export function LiveReply({ meta, steps, reconnecting }: { meta?: RunMeta; steps
         return (
           <div key={n} className="flex flex-col gap-3">
             {s && <Thinking text={s.thinking} live />}
-            {s?.text && <Markdown text={s.text} />}
+            {s?.text && <Markdown text={s.text} shown={shown} />}
             {tools
               .filter(([, t]) => STEP_OF(t.seq) === n)
               .map(([key, t]) => (

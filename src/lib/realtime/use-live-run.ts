@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRealtimeRun, useRealtimeStream } from "@trigger.dev/react-hooks";
 import { fetchRun, fetchRunToken, qk } from "../api/queries";
@@ -10,6 +10,9 @@ import { useLiveRuns, type LiveRun } from "../live-runs";
 const TERMINAL_META = new Set(["complete", "failed", "cancelled"]);
 const TERMINAL_REST = new Set(["completed", "failed", "cancelled"]);
 const REFRESH_BEFORE_EXPIRY_MS = 2 * 60_000;
+const MAX_STREAM_RETRIES = 4;
+// Trigger.dev rejects Timeout-Seconds >= 600 with a 400 ("Timeout seconds must be less than 600").
+const STREAM_TIMEOUT_SECONDS = 590;
 
 export type LiveStep = { step: number; thinking: string; text: string };
 
@@ -24,21 +27,36 @@ export function useLiveRun(chatId: string, live: LiveRun | undefined) {
   const accessToken = live?.publicAccessToken;
 
   const { run, error: runError } = useRealtimeRun(live?.triggerRunId, { accessToken, enabled });
+  const meta = (run?.metadata as { gx?: RunMeta } | undefined)?.gx;
+
+  // The worker creates the stream before it publishes metadata, so wait for metadata before subscribing.
+  const [streamAttempt, setStreamAttempt] = useState(0);
   const { parts, error: streamError } = useRealtimeStream<StreamPart>(live?.triggerRunId ?? "", "assistant", {
+    id: `${live?.triggerRunId}:${streamAttempt}`,
     accessToken,
-    enabled,
-    timeoutInSeconds: 900,
+    enabled: enabled && Boolean(meta),
+    timeoutInSeconds: STREAM_TIMEOUT_SECONDS,
   });
-  const realtimeDown = Boolean(runError || streamError);
+  useEffect(() => {
+    if (!streamError || streamAttempt >= MAX_STREAM_RETRIES) return;
+    const t = setTimeout(() => setStreamAttempt((n) => n + 1), 1_000 * 2 ** streamAttempt);
+    return () => clearTimeout(t);
+  }, [streamError, streamAttempt]);
+  const realtimeDown = Boolean(runError || (streamError && streamAttempt >= MAX_STREAM_RETRIES));
+  useEffect(() => {
+    if (runError) console.warn("[realtime] run subscription error:", runError);
+    if (streamError) console.warn("[realtime] stream subscription error:", streamError);
+  }, [runError, streamError]);
 
   const rest = useQuery({
     queryKey: qk.run(live?.runId ?? "none"),
     queryFn: () => fetchRun(live!.runId),
     enabled: enabled && realtimeDown,
     refetchInterval: 3_000,
+    // The fallback is how a run finishes when realtime is down, so it must keep polling in background tabs.
+    refetchIntervalInBackground: true,
   });
 
-  const meta = (run?.metadata as { gx?: RunMeta } | undefined)?.gx;
   const done =
     (meta && TERMINAL_META.has(meta.status)) ||
     Boolean(run && (run.isCompleted || run.isFailed || run.isCancelled)) ||

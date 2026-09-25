@@ -10,10 +10,22 @@ const TOOL_LABELS: Record<string, { label: string; icon: typeof Crop }> = {
   crop_image: { label: "Crop Image", icon: Crop },
 };
 
-export function Markdown({ text }: { text: string }) {
+/** `shown` holds image URLs already rendered as results; the model sometimes repeats them as markdown images. */
+export function Markdown({ text, shown }: { text: string; shown?: Set<string> }) {
   return (
     <div className="space-y-3 text-[15px] leading-7 [&_a]:text-primary [&_a]:underline [&_code]:rounded [&_code]:bg-muted [&_code]:px-1 [&_ol]:list-decimal [&_ol]:pl-6 [&_pre]:overflow-x-auto [&_pre]:rounded-lg [&_pre]:bg-muted [&_pre]:p-3 [&_ul]:list-disc [&_ul]:pl-6">
-      <ReactMarkdown components={{ a: (p) => <a {...p} target="_blank" rel="noreferrer" /> }}>{text}</ReactMarkdown>
+      <ReactMarkdown
+        components={{
+          a: (p) => <a {...p} target="_blank" rel="noreferrer" />,
+          img: ({ src, alt }) =>
+            typeof src === "string" && !shown?.has(src) ? (
+              // eslint-disable-next-line @next/next/no-img-element -- model-provided remote image
+              <img src={src} alt={alt ?? ""} className="max-h-96 rounded-xl border" />
+            ) : null,
+        }}
+      >
+        {text}
+      </ReactMarkdown>
     </div>
   );
 }
@@ -91,12 +103,13 @@ export function ErrorNote({ message }: { message: string }) {
 /** Render stored blocks in order; a tool call and its result share one card. */
 export function Blocks({ blocks }: { blocks: ContentBlock[] }) {
   const results = new Map(blocks.flatMap((b) => (b.type === "tool_result" ? [[b.toolCallId, b] as const] : [])));
+  const shown = new Set(blocks.flatMap((b) => (b.type === "asset" ? [b.url] : [])));
   return (
     <>
       {blocks.map((b, i) => {
         switch (b.type) {
           case "text":
-            return <Markdown key={i} text={b.text} />;
+            return <Markdown key={i} text={b.text} shown={shown} />;
           case "thinking":
             return <Thinking key={i} text={b.text} />;
           case "tool_use": {

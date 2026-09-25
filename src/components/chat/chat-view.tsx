@@ -55,7 +55,12 @@ export function ChatView({ chatId }: { chatId: string }) {
       </div>
       <div className="mx-auto w-full max-w-3xl px-4 pb-4">
         <Composer
-          onSend={(text, ids) => submit(chatId, text, ids)}
+          onSend={async (text, ids) => {
+            const ok = await submit(chatId, text, ids);
+            // Your own message always brings you to the bottom; streaming then keeps you there.
+            if (ok) requestAnimationFrame(() => scroller.current?.scrollTo({ top: scroller.current.scrollHeight, behavior: "smooth" }));
+            return ok;
+          }}
           running={Boolean(live)}
           stopping={cancel.isPending || meta?.status === "stopping"}
           onStop={() => live && cancel.mutate(live.runId, { onError: (e) => toast.error(e.message) })}
