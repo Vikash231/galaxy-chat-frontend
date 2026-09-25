@@ -1,17 +1,19 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { useAuth } from "@clerk/nextjs";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { ApiError, setTokenGetter } from "@/lib/api/client";
+import { ApiError, markAuthReady, setTokenGetter } from "@/lib/api/client";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 
-/** Hand Clerk's token to the API client, and hold the app until Clerk has loaded so no request goes out unauthenticated. */
+/** Hand Clerk's token to the API client; requests wait until Clerk has loaded, the UI does not. */
 function AuthGate({ children }: { children: ReactNode }) {
   const { getToken, isLoaded } = useAuth();
   setTokenGetter(() => getToken());
-  if (!isLoaded) return null;
+  useEffect(() => {
+    if (isLoaded) markAuthReady();
+  }, [isLoaded]);
   return <>{children}</>;
 }
 

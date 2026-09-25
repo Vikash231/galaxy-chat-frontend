@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, type KeyboardEvent } from "react";
+import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { ArrowUp, Paperclip, Square } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useUploads } from "@/lib/uploads/use-uploads";
@@ -25,6 +25,11 @@ export function Composer({ onSend, onStop, running, stopping, disabled, autoFocu
   const ref = useRef<HTMLTextAreaElement>(null);
   const picker = useRef<HTMLInputElement>(null);
   const uploads = useUploads();
+  // The textarea is uncontrolled so hydration can't wipe text typed before React loaded; state only mirrors it.
+  useEffect(() => {
+    const typed = ref.current?.value;
+    if (typed) setText(typed);
+  }, []);
   const trimmed = text.trim();
   const tooLong = text.length > MAX_CHARS;
   const canSend = Boolean(trimmed) && !tooLong && !running && !sending && !disabled && !uploads.busy;
@@ -35,6 +40,7 @@ export function Composer({ onSend, onStop, running, stopping, disabled, autoFocu
     const ok = await onSend(trimmed, uploads.attachmentIds);
     setSending(false);
     if (ok) {
+      if (ref.current) ref.current.value = "";
       setText("");
       uploads.clear();
       ref.current?.focus();
@@ -65,7 +71,6 @@ export function Composer({ onSend, onStop, running, stopping, disabled, autoFocu
       <textarea
         id="composer"
         ref={ref}
-        value={text}
         autoFocus={autoFocus}
         onChange={(e) => setText(e.target.value)}
         onKeyDown={onKeyDown}

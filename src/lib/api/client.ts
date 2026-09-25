@@ -9,6 +9,12 @@ export const setTokenGetter = (fn: TokenGetter) => {
   getToken = fn;
 };
 
+let markReady: () => void = () => {};
+const authReady = new Promise<void>((resolve) => (markReady = resolve));
+
+/** Called once Clerk has loaded; requests wait for this so none goes out without a token. */
+export const markAuthReady = () => markReady();
+
 export class ApiError extends Error {
   constructor(
     readonly status: number,
@@ -24,6 +30,7 @@ export class ApiError extends Error {
 
 const auth: Middleware = {
   async onRequest({ request }) {
+    await authReady;
     const token = await getToken();
     if (token) request.headers.set("Authorization", `Bearer ${token}`);
     request.headers.set("x-request-id", crypto.randomUUID());
