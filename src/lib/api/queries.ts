@@ -48,7 +48,7 @@ export function useCreateChat() {
   });
 }
 
-export type SendVars = { chatId: string; text: string; clientMessageId: string };
+export type SendVars = { chatId: string; text: string; clientMessageId: string; attachmentIds?: string[] };
 
 export function useSendMessage() {
   const qc = useQueryClient();

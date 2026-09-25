@@ -308,6 +308,18 @@ export interface paths {
                                     toolCallId: string;
                                 } | {
                                     /** @constant */
+                                    type: "attachment";
+                                    attachmentId: string;
+                                    /** @enum {string} */
+                                    kind: "image" | "video" | "audio";
+                                    /** Format: uri */
+                                    url: string;
+                                    name: string;
+                                    mime: string;
+                                    width: number | null;
+                                    height: number | null;
+                                } | {
+                                    /** @constant */
                                     type: "error";
                                     error: {
                                         code: string;
@@ -349,6 +361,8 @@ export interface paths {
                         /** Format: uuid */
                         clientMessageId: string;
                         text: string;
+                        /** @default [] */
+                        attachmentIds?: string[];
                     };
                 };
             };
@@ -379,6 +393,110 @@ export interface paths {
                 422: components["responses"]["Error"];
                 429: components["responses"]["Error"];
                 503: components["responses"]["Error"];
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/uploads/sign": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Signed Transloadit Assembly params for one upload */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            params: string;
+                            signature: string;
+                            /** Format: date-time */
+                            expiresAt: string;
+                        };
+                    };
+                };
+                401: components["responses"]["Error"];
+                422: components["responses"]["Error"];
+                429: components["responses"]["Error"];
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/uploads/complete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Verify a finished Assembly and save its files as attachments */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        assemblyId: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            attachments: {
+                                id: string;
+                                /** @enum {string} */
+                                kind: "image" | "video" | "audio";
+                                name: string;
+                                mime: string;
+                                sizeBytes: number;
+                                width: number | null;
+                                height: number | null;
+                                /** Format: uri */
+                                url: string;
+                                persistent: boolean;
+                            }[];
+                        };
+                    };
+                };
+                401: components["responses"]["Error"];
+                404: components["responses"]["Error"];
+                409: components["responses"]["Error"];
+                422: components["responses"]["Error"];
             };
         };
         delete?: never;
@@ -488,6 +606,18 @@ export interface paths {
                                     /** Format: uri */
                                     url: string;
                                     toolCallId: string;
+                                } | {
+                                    /** @constant */
+                                    type: "attachment";
+                                    attachmentId: string;
+                                    /** @enum {string} */
+                                    kind: "image" | "video" | "audio";
+                                    /** Format: uri */
+                                    url: string;
+                                    name: string;
+                                    mime: string;
+                                    width: number | null;
+                                    height: number | null;
                                 } | {
                                     /** @constant */
                                     type: "error";
@@ -657,7 +787,7 @@ export interface components {
                 "application/json": {
                     error: {
                         /** @enum {string} */
-                        code: "unauthenticated" | "insufficient_credits" | "not_found" | "run_active" | "run_not_dispatched" | "validation_failed" | "rate_limited" | "dispatch_failed" | "internal";
+                        code: "unauthenticated" | "insufficient_credits" | "not_found" | "run_active" | "run_not_dispatched" | "validation_failed" | "rate_limited" | "upload_not_ready" | "upload_rejected" | "upload_quota" | "dispatch_failed" | "internal";
                         message: string;
                         traceId: string;
                         details?: {

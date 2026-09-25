@@ -70,11 +70,11 @@ export function ToolCard({ name, status, input, credits, durationMs, error }: To
   );
 }
 
-export function ImageAsset({ url }: { url: string }) {
+export function ImageAsset({ url, alt = "Generated image", small }: { url: string; alt?: string; small?: boolean }) {
   return (
     <a href={url} target="_blank" rel="noreferrer" className="block w-fit overflow-hidden rounded-xl border">
       {/* eslint-disable-next-line @next/next/no-img-element -- remote provider URLs, sizes unknown ahead of time */}
-      <img src={url} alt="Generated image" className="max-h-96 max-w-full object-contain" loading="lazy" />
+      <img src={url} alt={alt} className={cn("max-w-full object-contain", small ? "max-h-40" : "max-h-96")} loading="lazy" />
     </a>
   );
 }

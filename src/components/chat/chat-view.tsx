@@ -55,7 +55,7 @@ export function ChatView({ chatId }: { chatId: string }) {
       </div>
       <div className="mx-auto w-full max-w-3xl px-4 pb-4">
         <Composer
-          onSend={(text) => submit(chatId, text)}
+          onSend={(text, ids) => submit(chatId, text, ids)}
           running={Boolean(live)}
           stopping={cancel.isPending || meta?.status === "stopping"}
           onStop={() => live && cancel.mutate(live.runId, { onError: (e) => toast.error(e.message) })}

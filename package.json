@@ -17,6 +17,8 @@
     "@tanstack/react-query": "5.103.2",
     "@tanstack/react-virtual": "3.14.13",
     "@trigger.dev/react-hooks": "4.6.4",
+    "@uppy/core": "6.0.2",
+    "@uppy/transloadit": "6.0.0",
     "class-variance-authority": "^0.7.1",
     "cn": "^0.4.0",
     "lucide-react": "1.48.0",

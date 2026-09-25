@@ -3,13 +3,14 @@
 import { useRef, useState, type KeyboardEvent } from "react";
 import { ArrowUp, Paperclip, Square } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { useUploads } from "@/lib/uploads/use-uploads";
 import { cn } from "@/lib/utils";
+import { AttachmentChips } from "./attachment-chips";
 
 const MAX_CHARS = 8000;
 
 type Props = {
-  onSend: (text: string) => Promise<boolean> | boolean;
+  onSend: (text: string, attachmentIds: string[]) => Promise<boolean> | boolean;
   onStop?: () => void;
   running?: boolean;
   stopping?: boolean;
@@ -22,17 +23,20 @@ export function Composer({ onSend, onStop, running, stopping, disabled, autoFocu
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
   const ref = useRef<HTMLTextAreaElement>(null);
+  const picker = useRef<HTMLInputElement>(null);
+  const uploads = useUploads();
   const trimmed = text.trim();
   const tooLong = text.length > MAX_CHARS;
-  const canSend = Boolean(trimmed) && !tooLong && !running && !sending && !disabled;
+  const canSend = Boolean(trimmed) && !tooLong && !running && !sending && !disabled && !uploads.busy;
 
   async function submit() {
     if (!canSend) return;
     setSending(true);
-    const ok = await onSend(trimmed);
+    const ok = await onSend(trimmed, uploads.attachmentIds);
     setSending(false);
     if (ok) {
       setText("");
+      uploads.clear();
       ref.current?.focus();
     }
   }
@@ -45,7 +49,16 @@ export function Composer({ onSend, onStop, running, stopping, disabled, autoFocu
   }
 
   return (
-    <div className="rounded-2xl border bg-background shadow-sm focus-within:ring-2 focus-within:ring-ring/30">
+    <div
+      className="rounded-2xl border bg-background shadow-sm focus-within:ring-2 focus-within:ring-ring/30"
+      onDragOver={(e) => e.preventDefault()}
+      onDrop={(e) => {
+        e.preventDefault();
+        uploads.add(e.dataTransfer.files);
+      }}
+      onPaste={(e) => e.clipboardData.files.length && uploads.add(e.clipboardData.files)}
+    >
+      <AttachmentChips items={uploads.items} onRemove={uploads.remove} onRetry={uploads.retry} />
       <label htmlFor="composer" className="sr-only">
         Message
       </label>
@@ -61,14 +74,20 @@ export function Composer({ onSend, onStop, running, stopping, disabled, autoFocu
         className="field-sizing-content max-h-60 min-h-14 w-full resize-none bg-transparent px-4 pt-4 text-[15px] outline-none placeholder:text-muted-foreground"
       />
       <div className="flex items-center justify-between px-3 pb-3">
-        <Tooltip>
-          <TooltipTrigger render={<span />}>
-            <Button type="button" variant="ghost" size="icon" aria-label="Attach files (coming soon)" disabled>
-              <Paperclip />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>Uploads are coming soon. Paste an image link for now.</TooltipContent>
-        </Tooltip>
+        <input
+          ref={picker}
+          type="file"
+          multiple
+          accept="image/*,video/*,audio/*"
+          className="hidden"
+          onChange={(e) => {
+            if (e.target.files) uploads.add(e.target.files);
+            e.target.value = "";
+          }}
+        />
+        <Button type="button" variant="ghost" size="icon" aria-label="Attach images, video or audio" onClick={() => picker.current?.click()} disabled={disabled}>
+          <Paperclip />
+        </Button>
         <div className="flex items-center gap-2">
           {tooLong && <span className="text-xs text-destructive">{text.length}/{MAX_CHARS}</span>}
           {running ? (

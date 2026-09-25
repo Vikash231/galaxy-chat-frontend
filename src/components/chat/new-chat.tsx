@@ -13,10 +13,10 @@ export function NewChat() {
   const createChat = useCreateChat();
   const { submit } = useSend();
 
-  async function onSend(text: string) {
+  async function onSend(text: string, attachmentIds: string[]) {
     try {
       const chat = await createChat.mutateAsync(titleFrom(text));
-      const ok = await submit(chat.id, text);
+      const ok = await submit(chat.id, text, attachmentIds);
       router.push(`/c/${chat.id}`);
       return ok;
     } catch (e) {
