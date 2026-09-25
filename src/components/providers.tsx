@@ -7,10 +7,12 @@ import { ApiError, setTokenGetter } from "@/lib/api/client";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 
-function AuthBridge() {
-  const { getToken } = useAuth();
+/** Hand Clerk's token to the API client, and hold the app until Clerk has loaded so no request goes out unauthenticated. */
+function AuthGate({ children }: { children: ReactNode }) {
+  const { getToken, isLoaded } = useAuth();
   setTokenGetter(() => getToken());
-  return null;
+  if (!isLoaded) return null;
+  return <>{children}</>;
 }
 
 export function Providers({ children }: { children: ReactNode }) {
@@ -20,16 +22,18 @@ export function Providers({ children }: { children: ReactNode }) {
         defaultOptions: {
           queries: {
             staleTime: 30_000,
-            // Client errors (404, 422…) will not fix themselves; only retry network and server failures.
-            retry: (count, e) => count < 2 && (!(e instanceof ApiError) || e.status === 0 || e.status >= 500),
+            // Client errors (404, 422…) won't fix themselves. Retry network/server failures, and a 401 once (token refresh race).
+            retry: (count, e) =>
+              !(e instanceof ApiError) ? count < 2 : e.status === 401 ? count < 1 : count < 2 && (e.status === 0 || e.status >= 500),
           },
         },
       }),
   );
   return (
     <QueryClientProvider client={client}>
-      <AuthBridge />
-      <TooltipProvider>{children}</TooltipProvider>
+      <AuthGate>
+        <TooltipProvider>{children}</TooltipProvider>
+      </AuthGate>
       <Toaster position="top-center" />
     </QueryClientProvider>
   );

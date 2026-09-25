@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Uppy from "@uppy/core";
 import Transloadit from "@uppy/transloadit";
 import { toast } from "sonner";
@@ -44,22 +44,22 @@ export function useUploads() {
   const [items, setItems] = useState<UploadItem[]>([]);
   const patch = (id: string, p: Partial<UploadItem>) => setItems((xs) => xs.map((x) => (x.id === id ? { ...x, ...p } : x)));
 
-  const uppy = useMemo(
-    () =>
-      new Uppy({
-        autoProceed: true,
-        restrictions: { maxNumberOfFiles: MAX_FILES, maxFileSize: MAX_BYTES, allowedFileTypes: ["image/*", "video/*", "audio/*"] },
-      }).use(Transloadit, {
-        waitForEncoding: true,
-        assemblyOptions: async () => {
-          const signed = await unwrap<Signed>(api.POST("/api/v1/uploads/sign"));
-          return { params: signed.params, signature: signed.signature };
-        },
-      }),
-    [],
-  );
+  const uppyRef = useRef<Uppy | null>(null);
 
+  // Created inside the effect so each mount owns its instance; React dev's double mount would otherwise
+  // leave listeners attached to a destroyed instance (duplicate chips, uploads stuck at 0%).
   useEffect(() => {
+    const uppy = new Uppy({
+      autoProceed: true,
+      restrictions: { maxNumberOfFiles: MAX_FILES, maxFileSize: MAX_BYTES, allowedFileTypes: ["image/*", "video/*", "audio/*"] },
+    }).use(Transloadit, {
+      waitForEncoding: true,
+      assemblyOptions: async () => {
+        const signed = await unwrap<Signed>(api.POST("/api/v1/uploads/sign"));
+        return { params: signed.params, signature: signed.signature };
+      },
+    });
+    uppyRef.current = uppy;
     uppy.on("file-added", (f) => {
       const preview = f.type?.startsWith("image/") && f.data instanceof Blob ? URL.createObjectURL(f.data) : undefined;
       setItems((xs) => [...xs, { id: f.id, name: f.name ?? "file", preview, progress: 0, status: "uploading" }]);
@@ -87,14 +87,19 @@ export function useUploads() {
         files.forEach((f) => patch(f.id, { status: "error", error: message }));
       }
     });
-    return () => uppy.destroy();
-  }, [uppy]);
+    return () => {
+      uppy.destroy();
+      if (uppyRef.current === uppy) uppyRef.current = null;
+    };
+  }, []);
 
   return {
     items,
     busy: items.some((i) => i.status === "uploading" || i.status === "processing"),
     attachmentIds: items.flatMap((i) => (i.status === "ready" && i.attachment ? [i.attachment.id] : [])),
     add(files: FileList | File[]) {
+      const uppy = uppyRef.current;
+      if (!uppy) return;
       for (const file of Array.from(files)) {
         try {
           uppy.addFile({ name: file.name, type: file.type, data: file, source: "local" });
@@ -104,7 +109,8 @@ export function useUploads() {
       }
     },
     remove(id: string) {
-      if (uppy.getFile(id)) uppy.removeFile(id);
+      const uppy = uppyRef.current;
+      if (uppy?.getFile(id)) uppy.removeFile(id);
       setItems((xs) => {
         const gone = xs.find((x) => x.id === id);
         if (gone?.preview) URL.revokeObjectURL(gone.preview);
@@ -113,12 +119,12 @@ export function useUploads() {
     },
     retry(id: string) {
       patch(id, { status: "uploading", error: undefined, progress: 0 });
-      uppy.retryUpload(id).catch(() => {});
+      uppyRef.current?.retryUpload(id).catch(() => {});
     },
     /** After a send: forget the files without cancelling anything. */
     clear() {
       setItems((xs) => (xs.forEach((x) => x.preview && URL.revokeObjectURL(x.preview)), []));
-      uppy.clear();
+      uppyRef.current?.clear();
     },
   };
 }
