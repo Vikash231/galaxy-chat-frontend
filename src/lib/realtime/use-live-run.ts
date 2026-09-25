@@ -48,12 +48,13 @@ export function useLiveRun(chatId: string, live: LiveRun | undefined) {
     if (streamError) console.warn("[realtime] stream subscription error:", streamError);
   }, [runError, streamError]);
 
+  // Postgres is the source of truth. Realtime can stall without reporting an error, so while a run is live
+  // we also poll its REST status: every 5s as a safety net, every 3s once realtime has failed.
   const rest = useQuery({
     queryKey: qk.run(live?.runId ?? "none"),
     queryFn: () => fetchRun(live!.runId),
-    enabled: enabled && realtimeDown,
-    refetchInterval: 3_000,
-    // The fallback is how a run finishes when realtime is down, so it must keep polling in background tabs.
+    enabled,
+    refetchInterval: realtimeDown ? 3_000 : 5_000,
     refetchIntervalInBackground: true,
   });
 
