@@ -298,6 +298,8 @@ export interface paths {
                                         message: string;
                                         retryable: boolean;
                                     };
+                                    creditsMicro?: number;
+                                    durationMs?: number;
                                 } | {
                                     /** @constant */
                                     type: "asset";
@@ -326,6 +328,13 @@ export interface paths {
                                         message: string;
                                         retryable: boolean;
                                     };
+                                } | {
+                                    /** @constant */
+                                    type: "usage";
+                                    creditsMicro: number;
+                                    promptTokens: number;
+                                    completionTokens: number;
+                                    models: string[];
                                 })[];
                                 error: {
                                     code: string;
@@ -598,6 +607,8 @@ export interface paths {
                                         message: string;
                                         retryable: boolean;
                                     };
+                                    creditsMicro?: number;
+                                    durationMs?: number;
                                 } | {
                                     /** @constant */
                                     type: "asset";
@@ -626,6 +637,13 @@ export interface paths {
                                         message: string;
                                         retryable: boolean;
                                     };
+                                } | {
+                                    /** @constant */
+                                    type: "usage";
+                                    creditsMicro: number;
+                                    promptTokens: number;
+                                    completionTokens: number;
+                                    models: string[];
                                 })[];
                                 error: {
                                     code: string;

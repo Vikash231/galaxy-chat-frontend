@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import ReactMarkdown from "react-markdown";
-import { AlertCircle, Brain, Check, ChevronDown, Crop, Loader2, X } from "lucide-react";
+import { AlertCircle, Brain, Check, ChevronDown, Coins, Crop, Loader2, X } from "lucide-react";
+import { formatCredits } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import type { ContentBlock } from "@/lib/api/types";
 
@@ -49,7 +50,7 @@ type ToolCardProps = {
   name: string;
   status: string;
   input?: unknown;
-  credits?: string;
+  credits?: string | number;
   durationMs?: number;
   error?: { message: string } | null;
 };
@@ -67,7 +68,7 @@ export function ToolCard({ name, status, input, credits, durationMs, error }: To
         <span className="font-medium">{meta.label}</span>
         <span className="ml-auto flex items-center gap-2 text-xs text-muted-foreground">
           {durationMs != null && <span>{(durationMs / 1000).toFixed(1)}s</span>}
-          {credits && credits !== "0" && <span>{(Number(credits) / 1_000_000).toFixed(3)} credits</span>}
+          {credits != null && Number(credits) > 0 && <span>{formatCredits(credits)} credits</span>}
           {running && <Loader2 className="size-4 animate-spin" aria-label="Running" />}
           {status === "completed" && <Check className="size-4 text-emerald-600" aria-label="Completed" />}
           {failed && <X className="size-4 text-destructive" aria-label={status} />}
@@ -114,16 +115,31 @@ export function Blocks({ blocks }: { blocks: ContentBlock[] }) {
             return <Thinking key={i} text={b.text} />;
           case "tool_use": {
             const r = results.get(b.toolCallId);
-            return <ToolCard key={i} name={b.name} status={r?.status ?? "cancelled"} input={b.input} error={r?.error} />;
+            return (
+              <ToolCard key={i} name={b.name} status={r?.status ?? "cancelled"} input={b.input} error={r?.error} credits={r?.creditsMicro} durationMs={r?.durationMs} />
+            );
           }
           case "asset":
             return b.kind === "image" ? <ImageAsset key={i} url={b.url} /> : null;
           case "error":
             return <ErrorNote key={i} message={b.error.message} />;
+          case "usage":
+            return <UsageLine key={i} usage={b} />;
           default:
             return null;
         }
       })}
     </>
+  );
+}
+
+/** What the reply cost, under the reply: credits spent on tools; tokens and models on hover. */
+export function UsageLine({ usage }: { usage: Extract<ContentBlock, { type: "usage" }> }) {
+  const detail = `${usage.promptTokens + usage.completionTokens} tokens · ${usage.models.join(", ") || "no model"}`;
+  return (
+    <p className="flex items-center gap-1.5 text-xs text-muted-foreground" title={detail}>
+      <Coins className="size-3.5" />
+      {formatCredits(usage.creditsMicro)} credits
+    </p>
   );
 }
