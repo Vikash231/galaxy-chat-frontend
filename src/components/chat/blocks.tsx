@@ -2,13 +2,14 @@
 
 import { useState } from "react";
 import ReactMarkdown from "react-markdown";
-import { AlertCircle, Brain, Check, ChevronDown, Coins, Crop, Loader2, X } from "lucide-react";
+import { AlertCircle, Brain, Check, ChevronDown, Coins, Crop, ImagePlus, Loader2, X } from "lucide-react";
 import { formatCredits } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import type { ContentBlock } from "@/lib/api/types";
 
 const TOOL_LABELS: Record<string, { label: string; icon: typeof Crop }> = {
   crop_image: { label: "Crop Image", icon: Crop },
+  gpt_image_2: { label: "GPT Image 2", icon: ImagePlus },
 };
 
 /** `shown` holds image URLs already rendered as results; the model sometimes repeats them as markdown images. */
