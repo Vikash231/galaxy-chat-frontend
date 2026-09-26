@@ -8,7 +8,7 @@ import type { WaitpointAnswer } from "@/lib/api/types";
 import { useLiveRuns } from "@/lib/live-runs";
 import { usePlanMode } from "@/lib/plan-mode";
 import { useLiveRun, useReattachActiveRun } from "@/lib/realtime/use-live-run";
-import { useSend } from "@/lib/use-send";
+import { useRetry, useSend } from "@/lib/use-send";
 import { ApprovalOverlay } from "./approval-overlay";
 import { Composer } from "./composer";
 import { LiveReply } from "./live-reply";
@@ -29,6 +29,7 @@ export function ChatView({ chatId }: { chatId: string }) {
   const hydratePlan = plan.hydrate;
   useEffect(() => hydratePlan(), [hydratePlan]);
   const { submit } = useSend();
+  const { retry, pending: retrying } = useRetry(chatId);
   const scroller = useRef<HTMLDivElement>(null);
 
   // API pages are newest-first; show oldest-first. The live run's stored placeholder is replaced by the live view.
@@ -57,8 +58,9 @@ export function ChatView({ chatId }: { chatId: string }) {
             </button>
           )}
           {messages.isPending && <Skeleton className="h-20 w-full" />}
-          {ordered.map((m) => (
-            <Message key={m.id} message={m} />
+          {ordered.map((m, i) => (
+            // Only the newest reply, and only when nothing is running, can be retried.
+            <Message key={m.id} message={m} onRetry={!live && !chat.data?.activeRun && i === ordered.length - 1 && m.runId ? () => retry(m.runId!) : undefined} retrying={retrying} />
           ))}
           {live && <LiveReply meta={meta} steps={steps} reconnecting={realtimeDown} />}
         </div>

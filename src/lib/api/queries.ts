@@ -1,12 +1,14 @@
 "use client";
 
-import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { keepPreviousData, useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, unwrap } from "./client";
 import type { Chat, ChatDetail, ChatPage, Me, MessagePage, RealtimeAccess, RunView, SendResult, WaitpointAnswer } from "./types";
 
 export const qk = {
   me: ["me"] as const,
-  chats: ["chats"] as const,
+  chats: ["chats"] as const, // prefix of every chat list below, so invalidating it refreshes all of them
+  chatsPinned: ["chats", "pinned"] as const,
+  chatsSearch: (q: string) => ["chats", "search", q] as const,
   chat: (id: string) => ["chat", id] as const,
   messages: (id: string) => ["messages", id] as const,
   run: (id: string) => ["run", id] as const,
@@ -16,9 +18,23 @@ export const useMe = () => useQuery({ queryKey: qk.me, queryFn: () => unwrap<Me>
 
 export const useChats = () =>
   useInfiniteQuery({
-    queryKey: qk.chats,
+    queryKey: [...qk.chats, "recent"] as const,
     initialPageParam: undefined as string | undefined,
     queryFn: ({ pageParam }) => unwrap<ChatPage>(api.GET("/api/v1/chats", { params: { query: { limit: 30, cursor: pageParam } } })),
+    getNextPageParam: (last) => last.nextCursor ?? undefined,
+  });
+
+export const usePinnedChats = () =>
+  useQuery({ queryKey: qk.chatsPinned, queryFn: () => unwrap<ChatPage>(api.GET("/api/v1/chats", { params: { query: { pinned: "true", limit: 50 } } })) });
+
+/** Title search across all chats; nothing is fetched for fewer than 2 characters. */
+export const useChatSearch = (q: string) =>
+  useInfiniteQuery({
+    queryKey: qk.chatsSearch(q),
+    enabled: q.length >= 2,
+    placeholderData: keepPreviousData, // keep the old results on screen while the next word loads, no flicker
+    initialPageParam: undefined as string | undefined,
+    queryFn: ({ pageParam }) => unwrap<ChatPage>(api.GET("/api/v1/chats", { params: { query: { q, limit: 30, cursor: pageParam } } })),
     getNextPageParam: (last) => last.nextCursor ?? undefined,
   });
 
@@ -84,3 +100,29 @@ export const useAnswerWaitpoint = (runId: string, chatId: string) => {
     },
   });
 };
+
+/** Pin, unpin or rename a chat, then refresh every chat list. */
+export const useUpdateChat = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ chatId, ...body }: { chatId: string; pinned?: boolean; title?: string }) =>
+      unwrap<Chat>(api.PATCH("/api/v1/chats/{chatId}", { params: { path: { chatId } }, body })),
+    onSuccess: (_d, { chatId }) => {
+      void qc.invalidateQueries({ queryKey: qk.chats });
+      void qc.invalidateQueries({ queryKey: qk.chat(chatId) });
+    },
+  });
+};
+
+/** Delete a chat. The API refuses while a reply is running; its message becomes the toast. */
+export const useDeleteChat = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (chatId: string) => unwrap<{ id: string }>(api.DELETE("/api/v1/chats/{chatId}", { params: { path: { chatId } } })),
+    // Only the lists refresh: dropping the open chat's own queries here would make its page refetch and flash "doesn't exist" before we navigate away.
+    onSuccess: () => void qc.invalidateQueries({ queryKey: qk.chats }),
+  });
+};
+
+/** Run a failed or stopped reply again. */
+export const retryRun = (runId: string) => unwrap<SendResult>(api.POST("/api/v1/runs/{runId}/retry", { params: { path: { runId } } }));

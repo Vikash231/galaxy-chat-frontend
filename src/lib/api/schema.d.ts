@@ -98,12 +98,14 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List chats, most recent activity first */
+        /** List chats (unpinned by default), pinned chats with pinned=true, or search titles with q */
         get: {
             parameters: {
                 query?: {
                     cursor?: string;
                     limit?: number;
+                    q?: string;
+                    pinned?: "true" | "false";
                 };
                 header?: never;
                 path?: never;
@@ -271,10 +273,77 @@ export interface paths {
         };
         put?: never;
         post?: never;
-        delete?: never;
+        /** Delete a chat (refused while a reply is running) */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    chatId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            id: string;
+                        };
+                    };
+                };
+                401: components["responses"]["Error"];
+                404: components["responses"]["Error"];
+                409: components["responses"]["Error"];
+            };
+        };
         options?: never;
         head?: never;
-        patch?: never;
+        /** Pin, unpin or rename a chat */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    chatId: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        pinned?: boolean;
+                        title?: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            id: string;
+                            title: string;
+                            pinned: boolean;
+                            /** Format: date-time */
+                            createdAt: string;
+                            /** Format: date-time */
+                            updatedAt: string;
+                        };
+                    };
+                };
+                401: components["responses"]["Error"];
+                404: components["responses"]["Error"];
+                422: components["responses"]["Error"];
+            };
+        };
         trace?: never;
     };
     "/api/v1/chats/{chatId}/messages": {
@@ -811,6 +880,60 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/runs/{runId}/retry": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Run a failed or stopped reply again for the same message */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    runId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                202: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            chatId: string;
+                            messageId: string;
+                            runId: string;
+                            realtime: {
+                                triggerRunId: string;
+                                publicAccessToken: string;
+                                /** Format: date-time */
+                                expiresAt: string;
+                            };
+                        };
+                    };
+                };
+                401: components["responses"]["Error"];
+                402: components["responses"]["Error"];
+                404: components["responses"]["Error"];
+                409: components["responses"]["Error"];
+                429: components["responses"]["Error"];
+                503: components["responses"]["Error"];
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/runs/{runId}/cancel": {
         parameters: {
             query?: never;
@@ -1003,7 +1126,7 @@ export interface components {
                 "application/json": {
                     error: {
                         /** @enum {string} */
-                        code: "unauthenticated" | "insufficient_credits" | "not_found" | "run_active" | "run_not_dispatched" | "run_finished" | "waitpoint_closed" | "validation_failed" | "rate_limited" | "upload_not_ready" | "upload_rejected" | "upload_quota" | "dispatch_failed" | "internal";
+                        code: "unauthenticated" | "insufficient_credits" | "not_found" | "run_active" | "run_not_dispatched" | "run_finished" | "waitpoint_closed" | "run_not_retryable" | "validation_failed" | "rate_limited" | "upload_not_ready" | "upload_rejected" | "upload_quota" | "dispatch_failed" | "internal";
                         message: string;
                         traceId: string;
                         details?: {

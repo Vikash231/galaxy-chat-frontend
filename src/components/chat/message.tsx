@@ -1,7 +1,11 @@
+import { RotateCcw } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import type { Message as MessageType } from "@/lib/api/types";
 import { Blocks, ErrorNote, MediaAsset } from "./blocks";
 
-export function Message({ message }: { message: MessageType }) {
+type Props = { message: MessageType; /** Set only on the newest reply when nothing is running: retries it. */ onRetry?: () => void; retrying?: boolean };
+
+export function Message({ message, onRetry, retrying }: Props) {
   if (message.role === "user") {
     const text = message.content.flatMap((b) => (b.type === "text" ? [b.text] : [])).join("\n");
     const files = message.content.flatMap((b) => (b.type === "attachment" ? [b] : []));
@@ -23,6 +27,13 @@ export function Message({ message }: { message: MessageType }) {
       <Blocks blocks={message.content} />
       {message.status === "cancelled" && <p className="text-sm text-muted-foreground">Stopped.</p>}
       {message.status === "failed" && message.error && <ErrorNote message={message.error.message} />}
+      {onRetry && (message.status === "failed" || message.status === "cancelled") && message.error?.retryable !== false && (
+        <div>
+          <Button type="button" variant="outline" size="sm" onClick={onRetry} disabled={retrying} aria-label="Retry this reply">
+            <RotateCcw /> {retrying ? "Retrying…" : "Retry"}
+          </Button>
+        </div>
+      )}
     </div>
   );
 }
