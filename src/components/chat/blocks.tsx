@@ -2,14 +2,16 @@
 
 import { useState } from "react";
 import ReactMarkdown from "react-markdown";
-import { AlertCircle, Brain, Check, ChevronDown, Coins, Crop, ImagePlus, Loader2, X } from "lucide-react";
+import { AlertCircle, Brain, Check, ChevronDown, Coins, Crop, Film, ImagePlus, Loader2, X } from "lucide-react";
 import { formatCredits } from "@/lib/format";
+import { hideFileNames } from "@/lib/reply-text";
 import { cn } from "@/lib/utils";
 import type { ContentBlock } from "@/lib/api/types";
 
 const TOOL_LABELS: Record<string, { label: string; icon: typeof Crop }> = {
   crop_image: { label: "Crop Image", icon: Crop },
   gpt_image_2: { label: "GPT Image 2", icon: ImagePlus },
+  merge_videos: { label: "Merge Videos", icon: Film },
 };
 
 /** `shown` holds image URLs already rendered as results; the model sometimes repeats them as markdown images. */
@@ -26,7 +28,7 @@ export function Markdown({ text, shown }: { text: string; shown?: Set<string> })
             ) : null,
         }}
       >
-        {text}
+        {hideFileNames(text)}
       </ReactMarkdown>
     </div>
   );
@@ -93,6 +95,22 @@ export function ImageAsset({ url, alt = "Generated image", small }: { url: strin
   );
 }
 
+/** A generated or attached file: images link to the original, video and audio play inline. */
+export function MediaAsset({ kind = "image", url, alt, small }: { kind?: "image" | "video" | "audio"; url: string; alt?: string; small?: boolean }) {
+  if (kind === "image") return <ImageAsset url={url} alt={alt} small={small} />;
+  if (kind === "audio") return <audio src={url} controls preload="metadata" className="w-full max-w-md" aria-label={alt ?? "Audio"} />;
+  return (
+    <video
+      src={url}
+      controls
+      playsInline
+      preload="metadata"
+      aria-label={alt ?? "Video"}
+      className={cn("max-w-full rounded-xl border bg-black", small ? "max-h-40" : "max-h-96")}
+    />
+  );
+}
+
 export function ErrorNote({ message }: { message: string }) {
   return (
     <div className="flex items-start gap-2 rounded-xl border border-destructive/30 bg-destructive/5 px-3 py-2.5 text-sm text-destructive">
@@ -121,7 +139,7 @@ export function Blocks({ blocks }: { blocks: ContentBlock[] }) {
             );
           }
           case "asset":
-            return b.kind === "image" ? <ImageAsset key={i} url={b.url} /> : null;
+            return <MediaAsset key={i} kind={b.kind} url={b.url} />;
           case "error":
             return <ErrorNote key={i} message={b.error.message} />;
           case "usage":

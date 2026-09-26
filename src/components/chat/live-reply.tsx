@@ -3,7 +3,7 @@
 import { Loader2 } from "lucide-react";
 import type { RunMeta } from "@/lib/api/types";
 import type { LiveStep } from "@/lib/realtime/use-live-run";
-import { ErrorNote, ImageAsset, Markdown, Thinking, ToolCard } from "./blocks";
+import { ErrorNote, Markdown, MediaAsset, Thinking, ToolCard } from "./blocks";
 
 const STEP_OF = (seq: number) => Math.floor(seq / 100);
 
@@ -28,7 +28,7 @@ export function LiveReply({ meta, steps, reconnecting }: { meta?: RunMeta; steps
               .map(([key, t]) => (
                 <div key={key} className="flex flex-col gap-3">
                   <ToolCard name={t.name} status={t.status} credits={t.credits} durationMs={t.durationMs} error={t.error} />
-                  {t.assetUrl && <ImageAsset url={t.assetUrl} />}
+                  {t.assetUrl && <MediaAsset kind={t.assetKind} url={t.assetUrl} />}
                 </div>
               ))}
           </div>

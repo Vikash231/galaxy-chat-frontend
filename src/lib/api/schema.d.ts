@@ -308,10 +308,13 @@ export interface paths {
                                     /** Format: uri */
                                     url: string;
                                     toolCallId: string;
+                                    ref?: string;
+                                    durationSec?: number;
                                 } | {
                                     /** @constant */
                                     type: "attachment";
                                     attachmentId: string;
+                                    ref?: string;
                                     /** @enum {string} */
                                     kind: "image" | "video" | "audio";
                                     /** Format: uri */
@@ -320,6 +323,7 @@ export interface paths {
                                     mime: string;
                                     width: number | null;
                                     height: number | null;
+                                    durationSec?: number | null;
                                 } | {
                                     /** @constant */
                                     type: "error";
@@ -495,6 +499,7 @@ export interface paths {
                                 sizeBytes: number;
                                 width: number | null;
                                 height: number | null;
+                                durationSec: number | null;
                                 /** Format: uri */
                                 url: string;
                                 persistent: boolean;
@@ -617,10 +622,13 @@ export interface paths {
                                     /** Format: uri */
                                     url: string;
                                     toolCallId: string;
+                                    ref?: string;
+                                    durationSec?: number;
                                 } | {
                                     /** @constant */
                                     type: "attachment";
                                     attachmentId: string;
+                                    ref?: string;
                                     /** @enum {string} */
                                     kind: "image" | "video" | "audio";
                                     /** Format: uri */
@@ -629,6 +637,7 @@ export interface paths {
                                     mime: string;
                                     width: number | null;
                                     height: number | null;
+                                    durationSec?: number | null;
                                 } | {
                                     /** @constant */
                                     type: "error";
@@ -780,6 +789,8 @@ export interface components {
                     durationMs?: number;
                     credits?: string;
                     assetUrl?: string;
+                    /** @enum {string} */
+                    assetKind?: "image" | "video" | "audio";
                     error?: {
                         code: string;
                         message: string;
