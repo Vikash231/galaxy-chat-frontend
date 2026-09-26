@@ -1,8 +1,10 @@
 "use client";
 
+import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { useCreateChat } from "@/lib/api/queries";
+import { NEW_CHAT, usePlanMode, usePlanModeStore } from "@/lib/plan-mode";
 import { useSend } from "@/lib/use-send";
 import { Composer } from "./composer";
 
@@ -12,11 +14,15 @@ export function NewChat() {
   const router = useRouter();
   const createChat = useCreateChat();
   const { submit } = useSend();
+  const plan = usePlanMode(NEW_CHAT);
+  const hydratePlan = plan.hydrate;
+  useEffect(() => hydratePlan(), [hydratePlan]);
 
   async function onSend(text: string, attachmentIds: string[]) {
     try {
       const chat = await createChat.mutateAsync(titleFrom(text));
-      const ok = await submit(chat.id, text, attachmentIds);
+      usePlanModeStore.getState().set(chat.id, plan.on); // the new chat keeps the choice
+      const ok = await submit(chat.id, text, attachmentIds, plan.on);
       router.push(`/c/${chat.id}`);
       return ok;
     } catch (e) {
@@ -30,7 +36,7 @@ export function NewChat() {
       <div className="w-full max-w-2xl">
         <h1 className="text-center text-3xl font-semibold tracking-tight">Your AI worker</h1>
         <p className="mt-2 mb-8 text-center text-muted-foreground">Work at the speed of thought.</p>
-        <Composer onSend={onSend} autoFocus />
+        <Composer onSend={onSend} autoFocus planMode={plan.on} onPlanModeChange={plan.setOn} />
       </div>
     </div>
   );

@@ -2,22 +2,35 @@
 
 import { useState } from "react";
 import ReactMarkdown from "react-markdown";
-import { AlertCircle, BookOpen, Brain, Check, ChevronDown, Coins, Crop, FileText, Film, ImagePlus, Loader2, X } from "lucide-react";
+import { AlertCircle, BookOpen, Brain, Check, ChevronDown, Coins, Crop, FileText, Film, ImagePlus, ListChecks, Loader2, MessageCircleQuestion, X } from "lucide-react";
 import { formatCredits } from "@/lib/format";
 import { hideFileNames } from "@/lib/reply-text";
 import { cn } from "@/lib/utils";
 import type { ContentBlock } from "@/lib/api/types";
 
-type ToolInput = { name?: string; skill?: string; path?: string } | undefined;
+type ToolInput = { name?: string; skill?: string; path?: string; question?: string; summary?: string; files?: string[] } | undefined;
+type ToolOutput = { status?: string; choice?: string; note?: string } | undefined;
 
 /** Label, icon and an optional detail read from the tool input (e.g. which skill). */
-const TOOL_LABELS: Record<string, { label: string; icon: typeof Crop; detail?: (input: ToolInput) => string | undefined }> = {
+const TOOL_LABELS: Record<string, { label: string; icon: typeof Crop; detail?: (input: ToolInput, output?: ToolOutput) => string | undefined }> = {
   crop_image: { label: "Crop Image", icon: Crop },
   gpt_image_2: { label: "GPT Image 2", icon: ImagePlus },
   merge_videos: { label: "Merge Videos", icon: Film },
   load_skill: { label: "Skill", icon: BookOpen, detail: (i) => i?.name },
   read_skill_asset: { label: "Skill file", icon: FileText, detail: (i) => i?.skill && i.path && `${i.skill}/${i.path}` },
+  ask_user: { label: "Question", icon: MessageCircleQuestion, detail: (i, o) => (o ? (o.status === "answered" ? `${i?.question ?? ""} → ${choiceLabel(i, o.choice)}` : "No answer") : i?.question) },
+  propose_plan: {
+    label: "Plan",
+    icon: ListChecks,
+    detail: (i, o) => (o ? `${{ approved: "Approved", declined: "Cancelled" }[o.status ?? ""] ?? "No answer"}${o.note ? ` · ${o.note}` : ""}` : i?.summary),
+  },
 };
+
+/** A picked file is shown by position ("File 2"), never by its internal name like vid_2. */
+function choiceLabel(input: ToolInput, choice = "") {
+  const at = input?.files?.indexOf(choice) ?? -1;
+  return at >= 0 ? `File ${at + 1}` : choice;
+}
 
 /** `shown` holds image URLs already rendered as results; the model sometimes repeats them as markdown images. */
 export function Markdown({ text, shown }: { text: string; shown?: Set<string> }) {
@@ -58,16 +71,17 @@ type ToolCardProps = {
   name: string;
   status: string;
   input?: unknown;
+  output?: unknown;
   credits?: string | number;
   durationMs?: number;
   error?: { message: string } | null;
 };
 
-export function ToolCard({ name, status, input, credits, durationMs, error }: ToolCardProps) {
+export function ToolCard({ name, status, input, output, credits, durationMs, error }: ToolCardProps) {
   const [open, setOpen] = useState(false);
   const meta = TOOL_LABELS[name] ?? { label: name, icon: Crop };
   const Icon = meta.icon;
-  const detail = meta.detail?.(input as ToolInput);
+  const detail = meta.detail?.(input as ToolInput, output as ToolOutput);
   const running = status === "pending" || status === "dispatching" || status === "running";
   const failed = status === "failed" || status === "cancelled";
   return (
@@ -142,7 +156,7 @@ export function Blocks({ blocks }: { blocks: ContentBlock[] }) {
           case "tool_use": {
             const r = results.get(b.toolCallId);
             return (
-              <ToolCard key={i} name={b.name} status={r?.status ?? "cancelled"} input={b.input} error={r?.error} credits={r?.creditsMicro} durationMs={r?.durationMs} />
+              <ToolCard key={i} name={b.name} status={r?.status ?? "cancelled"} input={b.input} output={r?.output} error={r?.error} credits={r?.creditsMicro} durationMs={r?.durationMs} />
             );
           }
           case "asset":

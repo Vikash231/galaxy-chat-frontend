@@ -26,7 +26,10 @@ export function useLiveRun(chatId: string, live: LiveRun | undefined) {
   const enabled = Boolean(live);
   const accessToken = live?.publicAccessToken;
 
-  const { run, error: runError } = useRealtimeRun(live?.triggerRunId, { accessToken, enabled });
+  const { run: subscribed, error: runError } = useRealtimeRun(live?.triggerRunId, { accessToken, enabled });
+  // The hook can still hold the previous run's final state for a moment after a new message starts a new run;
+  // reading that as "done" would detach the new run at once.
+  const run = subscribed && subscribed.id === live?.triggerRunId ? subscribed : undefined;
   const meta = (run?.metadata as { gx?: RunMeta } | undefined)?.gx;
 
   // The worker creates the stream before it publishes metadata, so wait for metadata before subscribing.
@@ -103,7 +106,11 @@ export function useLiveRun(chatId: string, live: LiveRun | undefined) {
     return [...byStep.values()].sort((a, b) => a.step - b.step);
   }, [parts]);
 
-  return { meta, steps, done, realtimeDown };
+  // Realtime is the fast path; the REST run view is the fallback and what a reload sees. Once realtime says the
+  // run is no longer waiting, a stale REST copy must not keep the overlay up.
+  const waitpoint = meta ? (meta.status === "waiting" ? (meta.waitpoint ?? rest.data?.waitpoint ?? null) : null) : (rest.data?.waitpoint ?? null);
+
+  return { meta, steps, done, realtimeDown, waitpoint };
 }
 
 /** After a reload or chat switch, reattach to the chat's active run using server-owned state. */

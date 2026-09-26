@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
-import { ArrowUp, Paperclip, Square } from "lucide-react";
+import { ArrowUp, ListChecks, Paperclip, Square } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useUploads } from "@/lib/uploads/use-uploads";
 import { cn } from "@/lib/utils";
@@ -16,10 +16,15 @@ type Props = {
   stopping?: boolean;
   disabled?: boolean;
   autoFocus?: boolean;
+  /** Plan mode: the agent must get a plan approved before spending credits. */
+  planMode?: boolean;
+  onPlanModeChange?: (on: boolean) => void;
+  /** The agent is waiting for an answer to a question shown above. */
+  waiting?: boolean;
 };
 
 /** Multiline input: Enter sends, Shift+Enter adds a line; while a reply runs, the send button becomes Stop. */
-export function Composer({ onSend, onStop, running, stopping, disabled, autoFocus }: Props) {
+export function Composer({ onSend, onStop, running, stopping, disabled, autoFocus, planMode, onPlanModeChange, waiting }: Props) {
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
   const ref = useRef<HTMLTextAreaElement>(null);
@@ -74,7 +79,7 @@ export function Composer({ onSend, onStop, running, stopping, disabled, autoFocu
         autoFocus={autoFocus}
         onChange={(e) => setText(e.target.value)}
         onKeyDown={onKeyDown}
-        placeholder="Assign a task or ask anything..."
+        placeholder={waiting ? "Answer the question above, or Stop" : "Assign a task or ask anything..."}
         rows={1}
         className="field-sizing-content max-h-60 min-h-14 w-full resize-none bg-transparent px-4 pt-4 text-[15px] outline-none placeholder:text-muted-foreground"
       />
@@ -90,9 +95,25 @@ export function Composer({ onSend, onStop, running, stopping, disabled, autoFocu
             e.target.value = "";
           }}
         />
-        <Button type="button" variant="ghost" size="icon" aria-label="Attach images, video or audio" onClick={() => picker.current?.click()} disabled={disabled}>
-          <Paperclip />
-        </Button>
+        <div className="flex items-center gap-1">
+          <Button type="button" variant="ghost" size="icon" aria-label="Attach images, video or audio" onClick={() => picker.current?.click()} disabled={disabled}>
+            <Paperclip />
+          </Button>
+          {onPlanModeChange && (
+            <Button
+              type="button"
+              variant={planMode ? "secondary" : "ghost"}
+              size="sm"
+              aria-pressed={Boolean(planMode)}
+              title="Plan mode: the agent shows a plan and its cost, and waits for your approval before spending credits"
+              onClick={() => onPlanModeChange(!planMode)}
+              className={cn("gap-1.5 rounded-full", planMode && "ring-1 ring-ring/40")}
+            >
+              <ListChecks />
+              Plan
+            </Button>
+          )}
+        </div>
         <div className="flex items-center gap-2">
           {tooLong && <span className="text-xs text-destructive">{text.length}/{MAX_CHARS}</span>}
           {running ? (

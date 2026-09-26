@@ -1,12 +1,15 @@
 "use client";
 
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useCancelRun, useChat, useMessages } from "@/lib/api/queries";
+import { useAnswerWaitpoint, useCancelRun, useChat, useMessages } from "@/lib/api/queries";
+import type { WaitpointAnswer } from "@/lib/api/types";
 import { useLiveRuns } from "@/lib/live-runs";
+import { usePlanMode } from "@/lib/plan-mode";
 import { useLiveRun, useReattachActiveRun } from "@/lib/realtime/use-live-run";
 import { useSend } from "@/lib/use-send";
+import { ApprovalOverlay } from "./approval-overlay";
 import { Composer } from "./composer";
 import { LiveReply } from "./live-reply";
 import { Message } from "./message";
@@ -16,8 +19,15 @@ export function ChatView({ chatId }: { chatId: string }) {
   const messages = useMessages(chatId);
   const live = useLiveRuns((s) => s.byChat[chatId]);
   useReattachActiveRun(chatId, chat.data?.activeRun?.runId);
-  const { meta, steps, realtimeDown } = useLiveRun(chatId, live);
+  const { meta, steps, realtimeDown, waitpoint } = useLiveRun(chatId, live);
   const cancel = useCancelRun();
+  const answer = useAnswerWaitpoint(live?.runId ?? "none", chatId);
+  // Hide the card the moment it is answered; the server state catches up a moment later.
+  const [answeredId, setAnsweredId] = useState<string>();
+  const open = waitpoint && waitpoint.id !== answeredId ? waitpoint : null;
+  const plan = usePlanMode(chatId);
+  const hydratePlan = plan.hydrate;
+  useEffect(() => hydratePlan(), [hydratePlan]);
   const { submit } = useSend();
   const scroller = useRef<HTMLDivElement>(null);
 
@@ -54,9 +64,20 @@ export function ChatView({ chatId }: { chatId: string }) {
         </div>
       </div>
       <div className="mx-auto w-full max-w-3xl px-4 pb-4">
+        {open && (
+          <ApprovalOverlay
+            key={open.id}
+            waitpoint={open}
+            submitting={answer.isPending}
+            onAnswer={(a: WaitpointAnswer) => {
+              setAnsweredId(open.id);
+              answer.mutate({ waitpointId: open.id, answer: a }, { onError: (e) => (setAnsweredId(undefined), toast.error(e.message)) });
+            }}
+          />
+        )}
         <Composer
           onSend={async (text, ids) => {
-            const ok = await submit(chatId, text, ids);
+            const ok = await submit(chatId, text, ids, plan.on);
             // Your own message always brings you to the bottom; streaming then keeps you there.
             if (ok) requestAnimationFrame(() => scroller.current?.scrollTo({ top: scroller.current.scrollHeight, behavior: "smooth" }));
             return ok;
@@ -65,6 +86,9 @@ export function ChatView({ chatId }: { chatId: string }) {
           stopping={cancel.isPending || meta?.status === "stopping"}
           onStop={() => live && cancel.mutate(live.runId, { onError: (e) => toast.error(e.message) })}
           autoFocus
+          planMode={plan.on}
+          onPlanModeChange={plan.setOn}
+          waiting={Boolean(open)}
         />
         <p className="mt-2 text-center text-xs text-muted-foreground">Powered by OpenRouter free models. Replies can be wrong.</p>
       </div>

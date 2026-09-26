@@ -15,3 +15,5 @@ export type RunView = Json<paths["/api/v1/runs/{runId}"]["get"]["responses"][200
 export type RunMeta = components["schemas"]["RunMeta"];
 export type StreamPart = components["schemas"]["StreamPart"];
 export type ToolMeta = RunMeta["tools"][string];
+export type Waitpoint = NonNullable<RunMeta["waitpoint"]>;
+export type WaitpointAnswer = paths["/api/v1/waitpoints/{waitpointId}/answer"]["post"]["requestBody"]["content"]["application/json"];

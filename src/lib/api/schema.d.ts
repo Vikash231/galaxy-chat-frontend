@@ -218,6 +218,49 @@ export interface paths {
                                 runId: string;
                                 /** @enum {string} */
                                 status: "queued" | "running" | "waiting" | "completed" | "failed" | "cancelled";
+                                waitpoint: {
+                                    id: string;
+                                    /** @enum {string} */
+                                    kind: "options" | "plan" | "credit" | "media";
+                                    request: {
+                                        /** @constant */
+                                        kind: "options";
+                                        question: string;
+                                        options: string[];
+                                    } | {
+                                        /** @constant */
+                                        kind: "media";
+                                        question: string;
+                                        files: {
+                                            name: string;
+                                            /** Format: uri */
+                                            url: string;
+                                            /** @enum {string} */
+                                            kind: "image" | "video" | "audio";
+                                        }[];
+                                    } | {
+                                        /** @constant */
+                                        kind: "plan";
+                                        summary: string;
+                                        steps: {
+                                            text: string;
+                                            tool?: string;
+                                            args?: string;
+                                        }[];
+                                        estimateMicro: number;
+                                    } | {
+                                        /** @constant */
+                                        kind: "credit";
+                                        tools: {
+                                            name: string;
+                                            estimateMicro: number;
+                                        }[];
+                                        stepMicro: number;
+                                        totalMicro: number;
+                                    };
+                                    /** Format: date-time */
+                                    expiresAt: string;
+                                } | null;
                             } | null;
                         };
                     };
@@ -376,6 +419,8 @@ export interface paths {
                         text: string;
                         /** @default [] */
                         attachmentIds?: string[];
+                        /** @default false */
+                        planMode?: boolean;
                     };
                 };
             };
@@ -662,6 +707,49 @@ export interface paths {
                                 /** Format: date-time */
                                 createdAt: string;
                             } | null;
+                            waitpoint: {
+                                id: string;
+                                /** @enum {string} */
+                                kind: "options" | "plan" | "credit" | "media";
+                                request: {
+                                    /** @constant */
+                                    kind: "options";
+                                    question: string;
+                                    options: string[];
+                                } | {
+                                    /** @constant */
+                                    kind: "media";
+                                    question: string;
+                                    files: {
+                                        name: string;
+                                        /** Format: uri */
+                                        url: string;
+                                        /** @enum {string} */
+                                        kind: "image" | "video" | "audio";
+                                    }[];
+                                } | {
+                                    /** @constant */
+                                    kind: "plan";
+                                    summary: string;
+                                    steps: {
+                                        text: string;
+                                        tool?: string;
+                                        args?: string;
+                                    }[];
+                                    estimateMicro: number;
+                                } | {
+                                    /** @constant */
+                                    kind: "credit";
+                                    tools: {
+                                        name: string;
+                                        estimateMicro: number;
+                                    }[];
+                                    stepMicro: number;
+                                    totalMicro: number;
+                                };
+                                /** Format: date-time */
+                                expiresAt: string;
+                            } | null;
                         };
                     };
                 };
@@ -766,19 +854,118 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/waitpoints/{waitpointId}/answer": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Answer a question the agent is waiting on (option, file, plan or cost approval) */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    waitpointId: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        choice: string;
+                    } | {
+                        approve: boolean;
+                        note?: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            id: string;
+                            /** @enum {string} */
+                            status: "pending" | "answered" | "expired" | "cancelled";
+                        };
+                    };
+                };
+                401: components["responses"]["Error"];
+                404: components["responses"]["Error"];
+                409: components["responses"]["Error"];
+                422: components["responses"]["Error"];
+                503: components["responses"]["Error"];
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
         RunMeta: {
             /** @enum {string} */
-            status: "thinking" | "working" | "complete" | "failed" | "cancelled" | "stopping";
+            status: "thinking" | "working" | "waiting" | "complete" | "failed" | "cancelled" | "stopping";
             step: number;
             label?: string;
             error?: {
                 code: string;
                 message: string;
                 retryable: boolean;
+            };
+            waitpoint?: {
+                id: string;
+                /** @enum {string} */
+                kind: "options" | "plan" | "credit" | "media";
+                request: {
+                    /** @constant */
+                    kind: "options";
+                    question: string;
+                    options: string[];
+                } | {
+                    /** @constant */
+                    kind: "media";
+                    question: string;
+                    files: {
+                        name: string;
+                        /** Format: uri */
+                        url: string;
+                        /** @enum {string} */
+                        kind: "image" | "video" | "audio";
+                    }[];
+                } | {
+                    /** @constant */
+                    kind: "plan";
+                    summary: string;
+                    steps: {
+                        text: string;
+                        tool?: string;
+                        args?: string;
+                    }[];
+                    estimateMicro: number;
+                } | {
+                    /** @constant */
+                    kind: "credit";
+                    tools: {
+                        name: string;
+                        estimateMicro: number;
+                    }[];
+                    stepMicro: number;
+                    totalMicro: number;
+                };
+                /** Format: date-time */
+                expiresAt: string;
             };
             tools: {
                 [key: string]: {
@@ -816,7 +1003,7 @@ export interface components {
                 "application/json": {
                     error: {
                         /** @enum {string} */
-                        code: "unauthenticated" | "insufficient_credits" | "not_found" | "run_active" | "run_not_dispatched" | "validation_failed" | "rate_limited" | "upload_not_ready" | "upload_rejected" | "upload_quota" | "dispatch_failed" | "internal";
+                        code: "unauthenticated" | "insufficient_credits" | "not_found" | "run_active" | "run_not_dispatched" | "run_finished" | "waitpoint_closed" | "validation_failed" | "rate_limited" | "upload_not_ready" | "upload_rejected" | "upload_quota" | "dispatch_failed" | "internal";
                         message: string;
                         traceId: string;
                         details?: {

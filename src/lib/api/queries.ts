@@ -2,7 +2,7 @@
 
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, unwrap } from "./client";
-import type { Chat, ChatDetail, ChatPage, Me, MessagePage, RealtimeAccess, RunView, SendResult } from "./types";
+import type { Chat, ChatDetail, ChatPage, Me, MessagePage, RealtimeAccess, RunView, SendResult, WaitpointAnswer } from "./types";
 
 export const qk = {
   me: ["me"] as const,
@@ -48,7 +48,7 @@ export function useCreateChat() {
   });
 }
 
-export type SendVars = { chatId: string; text: string; clientMessageId: string; attachmentIds?: string[] };
+export type SendVars = { chatId: string; text: string; clientMessageId: string; attachmentIds?: string[]; planMode?: boolean };
 
 export function useSendMessage() {
   const qc = useQueryClient();
@@ -68,5 +68,19 @@ export const useCancelRun = () => {
   return useMutation({
     mutationFn: (runId: string) => unwrap(api.POST("/api/v1/runs/{runId}/cancel", { params: { path: { runId } } })),
     onSuccess: (_d, runId) => qc.invalidateQueries({ queryKey: qk.run(runId) }),
+  });
+};
+
+/** Answer the question a run is waiting on; the run resumes as soon as the API has saved the answer. */
+export const useAnswerWaitpoint = (runId: string, chatId: string) => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ waitpointId, answer }: { waitpointId: string; answer: WaitpointAnswer }) =>
+      unwrap<{ id: string; status: string }>(api.POST("/api/v1/waitpoints/{waitpointId}/answer", { params: { path: { waitpointId } }, body: answer })),
+    // Success or refusal (e.g. it expired meanwhile), re-read the real state so a stale card goes away.
+    onSettled: () => {
+      void qc.invalidateQueries({ queryKey: qk.run(runId) });
+      void qc.invalidateQueries({ queryKey: qk.chat(chatId) });
+    },
   });
 };

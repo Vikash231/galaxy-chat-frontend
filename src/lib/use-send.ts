@@ -10,9 +10,9 @@ export function useSend() {
   const send = useSendMessage();
   const attach = useLiveRuns((s) => s.attach);
 
-  async function submit(chatId: string, text: string, attachmentIds: string[] = []): Promise<boolean> {
+  async function submit(chatId: string, text: string, attachmentIds: string[] = [], planMode = false): Promise<boolean> {
     try {
-      const res = await send.mutateAsync({ chatId, text, attachmentIds, clientMessageId: crypto.randomUUID() });
+      const res = await send.mutateAsync({ chatId, text, attachmentIds, planMode, clientMessageId: crypto.randomUUID() });
       attach(chatId, { ...res.realtime, runId: res.runId });
       return true;
     } catch (e) {
