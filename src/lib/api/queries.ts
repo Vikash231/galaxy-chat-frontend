@@ -62,5 +62,11 @@ export function useSendMessage() {
   });
 }
 
-export const useCancelRun = () =>
-  useMutation({ mutationFn: (runId: string) => unwrap(api.POST("/api/v1/runs/{runId}/cancel", { params: { path: { runId } } })) });
+/** Stop a run. The API records the stop, so re-read the run now instead of waiting for realtime or the next poll. */
+export const useCancelRun = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (runId: string) => unwrap(api.POST("/api/v1/runs/{runId}/cancel", { params: { path: { runId } } })),
+    onSuccess: (_d, runId) => qc.invalidateQueries({ queryKey: qk.run(runId) }),
+  });
+};

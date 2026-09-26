@@ -2,16 +2,21 @@
 
 import { useState } from "react";
 import ReactMarkdown from "react-markdown";
-import { AlertCircle, Brain, Check, ChevronDown, Coins, Crop, Film, ImagePlus, Loader2, X } from "lucide-react";
+import { AlertCircle, BookOpen, Brain, Check, ChevronDown, Coins, Crop, FileText, Film, ImagePlus, Loader2, X } from "lucide-react";
 import { formatCredits } from "@/lib/format";
 import { hideFileNames } from "@/lib/reply-text";
 import { cn } from "@/lib/utils";
 import type { ContentBlock } from "@/lib/api/types";
 
-const TOOL_LABELS: Record<string, { label: string; icon: typeof Crop }> = {
+type ToolInput = { name?: string; skill?: string; path?: string } | undefined;
+
+/** Label, icon and an optional detail read from the tool input (e.g. which skill). */
+const TOOL_LABELS: Record<string, { label: string; icon: typeof Crop; detail?: (input: ToolInput) => string | undefined }> = {
   crop_image: { label: "Crop Image", icon: Crop },
   gpt_image_2: { label: "GPT Image 2", icon: ImagePlus },
   merge_videos: { label: "Merge Videos", icon: Film },
+  load_skill: { label: "Skill", icon: BookOpen, detail: (i) => i?.name },
+  read_skill_asset: { label: "Skill file", icon: FileText, detail: (i) => i?.skill && i.path && `${i.skill}/${i.path}` },
 };
 
 /** `shown` holds image URLs already rendered as results; the model sometimes repeats them as markdown images. */
@@ -62,6 +67,7 @@ export function ToolCard({ name, status, input, credits, durationMs, error }: To
   const [open, setOpen] = useState(false);
   const meta = TOOL_LABELS[name] ?? { label: name, icon: Crop };
   const Icon = meta.icon;
+  const detail = meta.detail?.(input as ToolInput);
   const running = status === "pending" || status === "dispatching" || status === "running";
   const failed = status === "failed" || status === "cancelled";
   return (
@@ -69,6 +75,7 @@ export function ToolCard({ name, status, input, credits, durationMs, error }: To
       <button type="button" onClick={() => setOpen((o) => !o)} className="flex w-full items-center gap-2 px-3 py-2.5 text-left" aria-expanded={open}>
         <Icon className="size-4 text-muted-foreground" />
         <span className="font-medium">{meta.label}</span>
+        {detail && <span className="truncate text-muted-foreground">{detail}</span>}
         <span className="ml-auto flex items-center gap-2 text-xs text-muted-foreground">
           {durationMs != null && <span>{(durationMs / 1000).toFixed(1)}s</span>}
           {credits != null && Number(credits) > 0 && <span>{formatCredits(credits)} credits</span>}

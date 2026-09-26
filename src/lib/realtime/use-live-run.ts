@@ -108,16 +108,21 @@ export function useLiveRun(chatId: string, live: LiveRun | undefined) {
 
 /** After a reload or chat switch, reattach to the chat's active run using server-owned state. */
 export function useReattachActiveRun(chatId: string, activeRunId: string | undefined) {
-  const { byChat, attach } = useLiveRuns();
+  const { byChat, ended, attach } = useLiveRuns();
+  const qc = useQueryClient();
   const attached = byChat[chatId];
+  const seenEnd = Boolean(activeRunId && ended[activeRunId]);
   useEffect(() => {
-    if (!activeRunId || attached?.runId === activeRunId) return;
+    if (!activeRunId || attached?.runId === activeRunId || seenEnd) return;
     let cancelled = false;
     fetchRunToken(activeRunId)
       .then((access) => !cancelled && attach(chatId, { ...access, runId: activeRunId }))
-      .catch(() => {});
+      // e.g. 409 run_finished: the server just closed a run the worker could not; reload its real state.
+      .catch(() => {
+        if (!cancelled) void qc.invalidateQueries({ queryKey: qk.chat(chatId) });
+      });
     return () => {
       cancelled = true;
     };
-  }, [chatId, activeRunId, attached?.runId, attach]);
+  }, [chatId, activeRunId, attached?.runId, seenEnd, attach, qc]);
 }
