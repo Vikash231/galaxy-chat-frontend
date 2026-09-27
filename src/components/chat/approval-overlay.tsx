@@ -37,7 +37,7 @@ export function ApprovalOverlay({ waitpoint, submitting, onAnswer }: Props) {
   const r = waitpoint.request;
 
   const heading =
-    r.kind === "plan" ? "Approve this plan?" : r.kind === "credit" ? "Approve this cost?" : r.kind === "media" ? r.question : r.question;
+    r.kind === "plan" ? "Approve this plan?" : r.kind === "credit" ? "Approve this cost?" : r.question;
   const Icon = r.kind === "plan" ? ListChecks : r.kind === "credit" ? Coins : MessageCircleQuestion;
 
   return (
@@ -81,6 +81,40 @@ export function ApprovalOverlay({ waitpoint, submitting, onAnswer }: Props) {
             </button>
           ))}
         </div>
+      )}
+
+      {r.kind === "text" && (
+        <form
+          className="mt-3 space-y-2 text-sm"
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (note.trim()) onAnswer({ text: note.trim() });
+          }}
+        >
+          <label htmlFor="text-answer" className="sr-only">
+            Your answer
+          </label>
+          <textarea
+            id="text-answer"
+            value={note}
+            maxLength={500}
+            rows={2}
+            autoFocus
+            onChange={(e) => setNote(e.target.value)}
+            // Enter sends; Shift+Enter adds a line.
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                e.currentTarget.form?.requestSubmit();
+              }
+            }}
+            placeholder="e.g. keep the left half, or a square around the tower"
+            className="w-full resize-none rounded-lg border bg-transparent px-3 py-1.5 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
+          />
+          <Button type="submit" size="sm" disabled={locked || !note.trim()}>
+            Send
+          </Button>
+        </form>
       )}
 
       {r.kind === "plan" && (

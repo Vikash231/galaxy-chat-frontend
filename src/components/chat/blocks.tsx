@@ -9,7 +9,7 @@ import { cn } from "@/lib/utils";
 import type { ContentBlock } from "@/lib/api/types";
 
 type ToolInput = { name?: string; skill?: string; path?: string; question?: string; summary?: string; files?: string[] } | undefined;
-type ToolOutput = { status?: string; choice?: string; note?: string } | undefined;
+type ToolOutput = { status?: string; choice?: string; text?: string; note?: string } | undefined;
 
 /** Label, icon and an optional detail read from the tool input (e.g. which skill). */
 const TOOL_LABELS: Record<string, { label: string; icon: typeof Crop; detail?: (input: ToolInput, output?: ToolOutput) => string | undefined }> = {
@@ -18,7 +18,7 @@ const TOOL_LABELS: Record<string, { label: string; icon: typeof Crop; detail?: (
   merge_videos: { label: "Merge Videos", icon: Film },
   load_skill: { label: "Skill", icon: BookOpen, detail: (i) => i?.name },
   read_skill_asset: { label: "Skill file", icon: FileText, detail: (i) => i?.skill && i.path && `${i.skill}/${i.path}` },
-  ask_user: { label: "Question", icon: MessageCircleQuestion, detail: (i, o) => (o ? (o.status === "answered" ? `${i?.question ?? ""} → ${choiceLabel(i, o.choice)}` : "No answer") : i?.question) },
+  ask_user: { label: "Question", icon: MessageCircleQuestion, detail: (i, o) => (o ? (o.status === "answered" ? `${i?.question ?? ""} → ${o.text ?? choiceLabel(i, o.choice)}` : "No answer") : i?.question) },
   propose_plan: {
     label: "Plan",
     icon: ListChecks,

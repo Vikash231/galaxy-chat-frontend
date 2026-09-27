@@ -223,12 +223,16 @@ export interface paths {
                                 waitpoint: {
                                     id: string;
                                     /** @enum {string} */
-                                    kind: "options" | "plan" | "credit" | "media";
+                                    kind: "options" | "plan" | "credit" | "media" | "text";
                                     request: {
                                         /** @constant */
                                         kind: "options";
                                         question: string;
                                         options: string[];
+                                    } | {
+                                        /** @constant */
+                                        kind: "text";
+                                        question: string;
                                     } | {
                                         /** @constant */
                                         kind: "media";
@@ -779,12 +783,16 @@ export interface paths {
                             waitpoint: {
                                 id: string;
                                 /** @enum {string} */
-                                kind: "options" | "plan" | "credit" | "media";
+                                kind: "options" | "plan" | "credit" | "media" | "text";
                                 request: {
                                     /** @constant */
                                     kind: "options";
                                     question: string;
                                     options: string[];
+                                } | {
+                                    /** @constant */
+                                    kind: "text";
+                                    question: string;
                                 } | {
                                     /** @constant */
                                     kind: "media";
@@ -1003,6 +1011,8 @@ export interface paths {
                     } | {
                         approve: boolean;
                         note?: string;
+                    } | {
+                        text: string;
                     };
                 };
             };
@@ -1050,12 +1060,16 @@ export interface components {
             waitpoint?: {
                 id: string;
                 /** @enum {string} */
-                kind: "options" | "plan" | "credit" | "media";
+                kind: "options" | "plan" | "credit" | "media" | "text";
                 request: {
                     /** @constant */
                     kind: "options";
                     question: string;
                     options: string[];
+                } | {
+                    /** @constant */
+                    kind: "text";
+                    question: string;
                 } | {
                     /** @constant */
                     kind: "media";
