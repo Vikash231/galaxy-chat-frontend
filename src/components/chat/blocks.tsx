@@ -77,12 +77,16 @@ type ToolCardProps = {
   error?: { message: string; code?: string } | null;
 };
 
-/** A question or plan the model sent in the wrong shape; it gets the error and asks again, so the user needn't see it. */
-const isMisshapedAsk = (name: string, status: string, error?: { code?: string } | null) =>
-  (name === "ask_user" || name === "propose_plan") && status === "failed" && error?.code === "invalid_input";
+/**
+ * Failures meant only for the model, which it acts on by itself: a question or plan sent in the wrong shape, or a
+ * paid tool called before its plan was approved (nothing ran, nothing was charged).
+ */
+const isModelOnlyFailure = (name: string, status: string, error?: { code?: string } | null) =>
+  status === "failed" &&
+  (error?.code === "plan_required" || ((name === "ask_user" || name === "propose_plan") && error?.code === "invalid_input"));
 
 export function ToolCard(props: ToolCardProps) {
-  if (isMisshapedAsk(props.name, props.status, props.error)) return null;
+  if (isModelOnlyFailure(props.name, props.status, props.error)) return null;
   return <ToolCardBody {...props} />;
 }
 
