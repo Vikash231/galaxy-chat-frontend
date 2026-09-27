@@ -74,10 +74,19 @@ type ToolCardProps = {
   output?: unknown;
   credits?: string | number;
   durationMs?: number;
-  error?: { message: string } | null;
+  error?: { message: string; code?: string } | null;
 };
 
-export function ToolCard({ name, status, input, output, credits, durationMs, error }: ToolCardProps) {
+/** A question or plan the model sent in the wrong shape; it gets the error and asks again, so the user needn't see it. */
+const isMisshapedAsk = (name: string, status: string, error?: { code?: string } | null) =>
+  (name === "ask_user" || name === "propose_plan") && status === "failed" && error?.code === "invalid_input";
+
+export function ToolCard(props: ToolCardProps) {
+  if (isMisshapedAsk(props.name, props.status, props.error)) return null;
+  return <ToolCardBody {...props} />;
+}
+
+function ToolCardBody({ name, status, input, output, credits, durationMs, error }: ToolCardProps) {
   const [open, setOpen] = useState(false);
   const meta = TOOL_LABELS[name] ?? { label: name, icon: Crop };
   const Icon = meta.icon;
