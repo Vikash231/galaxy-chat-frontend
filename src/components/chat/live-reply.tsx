@@ -13,7 +13,8 @@ export function LiveReply({ meta, steps, reconnecting }: { meta?: RunMeta; steps
   const shown = new Set(tools.flatMap(([, t]) => (t.assetUrl ? [t.assetUrl] : [])));
   const stepNumbers = [...new Set([...steps.map((s) => s.step), ...tools.map(([, t]) => STEP_OF(t.seq))])].sort((a, b) => a - b);
   const status = meta?.status ?? "thinking";
-  const label = status === "waiting" ? "Waiting for your answer…" : meta?.label ? `${meta.label}…` : status === "working" ? "Working…" : status === "stopping" ? "Stopping…" : "Thinking…";
+  const waitingFor = meta?.waitpoint?.kind === "credit" ? "Waiting for you to approve the cost…" : meta?.waitpoint?.kind === "plan" ? "Waiting for you to approve the plan…" : "Waiting for your answer…";
+  const label = status === "waiting" ? waitingFor : meta?.label ? `${meta.label}…` : status === "working" ? "Working…" : status === "stopping" ? "Stopping…" : "Thinking…";
 
   return (
     <div className="flex flex-col gap-3" aria-live="polite" aria-busy="true">
